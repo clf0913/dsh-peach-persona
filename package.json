@@ -1,7 +1,7 @@
 {
   "name": "dsh-peach-persona",
   "version": "0.2.0",
-  "description": "在设置页里分段配置 agent 人设（名字、称呼、语气、行为准则），并记录每次注入。",
+  "description": "DSH（DeepSeek Harness）人设插件：在设置页里用 12 个字段分段配置 agent 的名字、称呼、自称、语气与行为准则，每次注入都有记录可查。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
