@@ -1,0 +1,7 @@
+# 统一换行，避免 Windows 上提交后整仓库 diff 变成 CRLF 噪音。
+* text=auto eol=lf
+
+# 二进制/资源不动
+*.png binary
+*.jpg binary
+*.ico binary

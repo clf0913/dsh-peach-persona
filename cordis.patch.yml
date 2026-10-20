@@ -1,0 +1,14 @@
+# dsh-peach-persona —— bundle patch
+#
+# 挂一行到 profile 的条目列表里。`name:` 必须与安装后的包名完全一致
+# （这里是 dsh-peach-persona），否则表现为「装上了但设置页不出现」。
+#
+# 它做什么：读 <DSH_HOME>\persona\persona.md，注册成系统提示词里的一段；
+# 设置页「桃子人设」可编辑该文件，并显示最近几次注入记录。
+#
+# 人设位的来源：三个 preset 的 persona 段在这个 profile 里被置空（prefix/suffix
+# 都是空串，空模板会遮蔽部署级人设并在渲染时消失），所以人设由本插件接管。
+
+- insert:
+    - id: peach-persona
+      name: dsh-peach-persona

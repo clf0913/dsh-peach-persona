@@ -1,0 +1,19 @@
+# 依赖（本地 link 安装时不需要）
+node_modules/
+
+# 日志与临时产物
+*.log
+*.tmp
+*.tmp-*
+
+# 人设数据不随仓库分发（每人的都在自己的 $DSH_HOME/persona 下）
+persona.json
+persona.md
+persona.md.bak
+inject.jsonl
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
