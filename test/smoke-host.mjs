@@ -43,11 +43,13 @@ try {
 }
 say(threw === '', 'apply() does not throw', threw)
 
-say(sections.length === 2, 'registers two prompt sections', sections.map((s) => `${s.name}@${s.order}`).join(', '))
+say(sections.length === 3, 'registers three prompt sections', sections.map((s) => `${s.name}@${s.order}`).join(', '))
 const head = sections.find((s) => s.name === 'peach:persona')
 const tail = sections.find((s) => s.name === 'peach:persona-tail')
+const growth = sections.find((s) => s.name === 'peach:growth')
 say(head?.order === 1, 'head section order 1')
 say(tail?.order === 10201, 'tail section order 10201')
+say(growth?.order === 3, 'growth section order 3')
 
 const route = routes.find((r) => r.path === '/api/peach-persona')
 say(Boolean(route) && route.kind === 'prefix', 'registers prefix route /api/peach-persona')
@@ -121,6 +123,21 @@ say(md.includes('\n---\n'), 'markdown keeps the head/tail separator')
 say(JSON.parse(readFileSync(jsonPath, 'utf8')).selfRef === '本人', 'self-reference persisted')
 say(head.text().includes('乙'), 'injected head follows the saved fields')
 say(tail.text().includes('约定：'), 'injected tail follows the saved fields')
+
+// ── 锁定 / 解锁（只影响设置页形态，不动人设与注入） ─────────────────────
+const beforeLock = await call('GET', '/state')
+say(beforeLock.json?.locked === false, 'state reports unlocked on a clean home')
+const lockedRes = await call('POST', '/lock')
+say(lockedRes.status === 200 && lockedRes.json?.ok === true && lockedRes.json.locked === true, 'POST /lock ok')
+const afterLock = await call('GET', '/state')
+say(afterLock.json?.locked === true, 'state reports locked after /lock')
+say(typeof afterLock.json?.lockedAt === 'string' && afterLock.json.lockedAt !== '', 'lock records a timestamp')
+say(Boolean(afterLock.json?.growth) && typeof afterLock.json.growth.text === 'string', 'state carries the growth section')
+say(head.text().includes('乙'), 'locking does not change the injected persona')
+const unlockedRes = await call('POST', '/unlock')
+say(unlockedRes.status === 200 && unlockedRes.json?.ok === true && unlockedRes.json.locked === false, 'POST /unlock ok')
+const afterUnlock = await call('GET', '/state')
+say(afterUnlock.json?.locked === false, 'state reports unlocked again')
 
 // ── 错误处理 ───────────────────────────────────────────────────────────────
 const nope = await call('GET', '/nope')

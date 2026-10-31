@@ -72,13 +72,32 @@ git clone https://github.com/clf0913/dsh-peach-persona.git "$env:USERPROFILE\.ds
 | `persona/persona.json` | 字段表，**编辑源**，设置页读写它 |
 | `persona/persona.md` | 由字段渲染出来的**产物**，注入只读它 |
 | `persona/persona.md.bak` | 每次保存前的上一版 |
+| `persona/growth.md` | **成长记录**：跟使用者相处中学到的东西，独立注入（上限 4000 字） |
+| `persona/state.json` | 表单锁定状态 `{ locked, lockedAt }` |
 | `persona/inject.jsonl` | 注入记录（只在渲染文本变化时追加一行） |
 
 `persona.md` 中间那个 `---` 行是分段约定：前段进系统提示词开头（人设前缀位），后段进第一方指导之后（相当于"最后说的话"）。
 
+## 成长记录（跟人设分开的一份）
+
+`persona/growth.md` 是**第三块**提示词内容，注册成独立段 `peach:growth`（order 3，上限 4000 字），跟人设分开：
+
+- **人设**（`persona.md`）回答"你是谁"——名字、称呼、语气、行为准则，改一次基本不动。
+- **成长**（`growth.md`）回答"相处中学到了什么"——使用者的偏好、踩过的坑、说话习惯，可以一直追加。
+
+这样两者互不污染：调语气不必动成长记录，加一条经验也不必重写人设。
+直接编辑 `growth.md` 即可，也可以让 agent 往里追加；空文件 = 整段不注入。
+
+## 锁定表单
+
+设计定型之后，可以在设置页把表单**锁定**：表单收起，只留「重新编辑」和成长记录。
+状态存在 `persona/state.json`（`{ "locked": true, "lockedAt": "..." }`），对应接口 `POST /lock` 与 `POST /unlock`。
+
+锁定只影响界面，不改注入行为——锁着照样注入，人设该怎么生效还是怎么生效。想改字段就点「重新编辑」。
+
 ## 实现要点（二次开发的人会关心）
 
-- 注入走 `systemPrompt.section()`，注册两段：`peach:persona`（order 1）与 `peach:persona-tail`（order 10201）。
+- 注入走 `systemPrompt.section()`，注册三段：`peach:persona`（order 1）、`peach:growth`（order 3）、`peach:persona-tail`（order 10201）。
 - **必须声明 `export const inject = ['systemPrompt', 'webServer']`。**
   `ctx.get(name)` 只回答"此刻有没有"，**不会等**。不写 `inject` 的话，装包时靠 HMR 在已运行的树上激活能正常工作，冷启动时服务还没就绪 → 人设段和 HTTP 路由一起静默消失，而且没有任何报错。
 - 渲染对空字段整行省略，所以"什么都没填"等于"什么都不注入"，不会渲染出「你是，是……」这类残句。
@@ -92,7 +111,7 @@ git clone https://github.com/clf0913/dsh-peach-persona.git "$env:USERPROFILE\.ds
 ```bash
 node test/run.mjs            # 一次跑完
 node test/render.mjs         # 渲染器契约：空就是空、名字 ≠ 自称、空字段整行省略
-node test/smoke-host.mjs     # 宿主冒烟：假 ctx 跑通两段注册 + HTTP 接口 + 全新安装
+node test/smoke-host.mjs     # 宿主冒烟：假 ctx 跑通提示词段注册 + HTTP 接口 + 全新安装
 node test/check-release.mjs  # 发布检查：清单/补丁/本地化/图标/默认全空/不泄漏作者人设
 ```
 
