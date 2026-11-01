@@ -3,7 +3,7 @@
 // 覆盖：依赖声明、两段提示词注册、HTTP 路由、全新安装（空表单 + 不写任何文件）、
 // 预览不落盘、保存落盘并重渲染、未知路由。
 import { EventEmitter } from 'node:events'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { reporter, moduleUrl, useScratchHome } from './_helpers.mjs'
 
@@ -145,6 +145,50 @@ say(nope.status === 404 && nope.json?.ok === false, 'unknown route returns a JSO
 
 const log = readFileSync(join(scratch.personaDir, 'inject.jsonl'), 'utf8')
 say(log.includes('"kind":"save"'), 'save is recorded in the injection log')
+
+// ── 成长记录：B（可增可删）+ C（提议待确认，采纳前不注入） ─────────────────
+const growthFile = join(scratch.personaDir, 'growth.md')
+const pendingFile = join(scratch.personaDir, 'growth-pending.jsonl')
+const growthSection = sections.find((s) => s.name === 'peach:growth')
+say(Boolean(growthSection), 'registers the growth section', growthSection && `order ${growthSection.order}`)
+say(growthSection.text() === '', 'growth section empty on a clean home')
+
+const g1 = await call('POST', '/growth/add', { text: '他问「有意义吗」时是在问值不值得做' })
+say(g1.status === 200 && g1.json?.ok === true, 'growth/add ok')
+say(g1.json.entries.length === 1, 'one entry after add')
+say(growthSection.text().includes('值不值得做'), 'new entry is injected')
+
+const g2 = await call('POST', '/growth/add', { text: '第二条测试记录' })
+say(g2.json.entries.length === 2, 'two entries after the second add')
+
+const g3 = await call('POST', '/growth/delete', { text: '第二条测试记录' })
+say(g3.status === 200 && g3.json.entries.length === 1, 'delete removes the entry')
+say(!growthSection.text().includes('第二条测试记录'), 'deleted entry no longer injected')
+
+// 提议：写进 pending 文件，采纳之前**绝不能**出现在注入内容里
+mkdirSync(scratch.personaDir, { recursive: true })
+writeFileSync(
+  pendingFile,
+  `${JSON.stringify({ at: '2026-11-01T00:00:00Z', text: '这是一条还没被采纳的提议', reason: '测试用' })}\n`,
+  'utf8',
+)
+const st2 = await call('GET', '/state')
+say(st2.json.growth.pending.length === 1, 'pending proposal is listed')
+say(!growthSection.text().includes('还没被采纳的提议'), 'pending proposal is NOT injected before approval')
+
+const badId = await call('POST', '/growth/approve', { id: 'nope' })
+say(badId.status === 404, 'approving an unknown id returns 404', String(badId.status))
+
+const appr = await call('POST', '/growth/approve', { id: st2.json.growth.pending[0].id })
+say(appr.status === 200 && appr.json.pending.length === 0, 'approve clears the pending item')
+say(growthSection.text().includes('还没被采纳的提议'), 'approved proposal becomes injected')
+say(
+  readFileSync(growthFile, 'utf8').includes('- 这是一条还没被采纳的提议'),
+  'approved proposal is a bullet in growth.md',
+)
+
+const tooLong = await call('POST', '/growth/add', { text: 'x'.repeat(5000) })
+say(tooLong.status === 400 && tooLong.json?.ok === false, 'over-limit add is rejected', String(tooLong.status))
 
 scratch.cleanup()
 finish()

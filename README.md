@@ -86,7 +86,29 @@ git clone https://github.com/clf0913/dsh-peach-persona.git "$env:USERPROFILE\.ds
 - **成长**（`growth.md`）回答"相处中学到了什么"——使用者的偏好、踩过的坑、说话习惯，可以一直追加。
 
 这样两者互不污染：调语气不必动成长记录，加一条经验也不必重写人设。
-直接编辑 `growth.md` 即可，也可以让 agent 往里追加；空文件 = 整段不注入。
+
+### 谁能写进去：提议 → 采纳
+
+成长段**不是** agent 想加就加的。写入分两条路：
+
+1. **人自己加**：设置页里直接输入一条，或手改 `growth.md`（一行一条 `- xxx`）。立即生效。
+2. **agent 提议**：agent 把候选写进 `persona/growth-pending.jsonl`（一行一个 JSON：`{"text": "...", "reason": "..."}`），
+   这条**只出现在设置页的「待确认」区，不会被注入**。使用者点「采纳」它才搬进 `growth.md`；点「丢弃」就删掉。
+
+> 这条设计的用意：让 agent 能提出"我学到了什么"，但不能自己给自己加规矩。
+
+### 接口
+
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| POST | `/growth/add` | 直接加一条（`{text}`） |
+| POST | `/growth/delete` | 删一条（`{text}` 精确匹配） |
+| POST | `/growth/approve` | 采纳一条提议（`{id}`），id 由内容算出 |
+| POST | `/growth/reject` | 丢弃一条提议（`{id}`） |
+
+`GET /state` 返回的 `growth` 里有 `entries`（已采纳）、`pending`（待确认）、`chars` / `max`（字数与上限）。
+
+**上限是硬的**：超过 4000 字的部分会被**静默截断**——不注入、也不报错。所以一条写一件事，别攒流水账。
 
 ## 锁定表单
 
