@@ -190,5 +190,37 @@ say(
 const tooLong = await call('POST', '/growth/add', { text: 'x'.repeat(5000) })
 say(tooLong.status === 400 && tooLong.json?.ok === false, 'over-limit add is rejected', String(tooLong.status))
 
+// ── 外部记忆（可选适配）：默认不连接、探测只找候选、查重不拦截 ─────────────
+const memDir = join(scratch.dir, 'memory')
+const probeEmpty = await call('POST', '/memory/probe', {})
+say(probeEmpty.status === 200 && probeEmpty.json.candidates.length === 0, 'probe finds nothing on a clean home')
+
+mkdirSync(join(memDir, '工作区'), { recursive: true })
+writeFileSync(
+  join(memDir, '工作区', 'CS0905.md'),
+  '# 项目记忆\n\n- 他问「有意义吗」时是在问值不值得做，不是问能不能做\n',
+  'utf8',
+)
+const probeOne = await call('POST', '/memory/probe', {})
+say(probeOne.json.candidates.length === 1, 'probe finds the candidate directory')
+say(probeOne.json.candidates[0].files >= 1, 'candidate reports its markdown count')
+say(probeOne.json.candidates[0].connected === false, 'probe does NOT auto-connect')
+
+const conn = await call('POST', '/memory/connect', { path: memDir, label: '测试记忆' })
+say(conn.status === 200 && conn.json.sources.length === 1, 'connect stores the source')
+
+const check = await call('POST', '/growth/check', { text: '他问「有意义吗」时是在问值不值得做' })
+say(check.status === 200 && check.json.similar.length > 0, 'check finds a similar line in the connected source')
+say(String(check.json.similar[0].file).includes('CS0905.md'), 'the hit points at the right file')
+
+const checkFar = await call('POST', '/growth/check', { text: '完全无关的一句话：今天天气不错' })
+say(checkFar.json.similar.length === 0, 'unrelated text produces no hits')
+
+const stMem = await call('GET', '/state')
+say(stMem.json.memory.sources.length === 1, '/state reports the connected source')
+
+const disc = await call('POST', '/memory/disconnect', { path: memDir })
+say(disc.status === 200 && disc.json.sources.length === 0, 'disconnect removes the source')
+
 scratch.cleanup()
 finish()
